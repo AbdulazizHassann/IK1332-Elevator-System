@@ -7,17 +7,18 @@ BMP581 bmp;
 #define SCL_PIN 1
 
 // Updated floor ranges (Pa)
-float floorMin[4] = {100150, 100100, 100050,  99000};
-float floorMax[4] = {100200, 100150, 100100, 100050};
+float floorMin[4] = {100890, 100860, 100820, 100785, 100750, 100710 };
+float floorMax[4] = {100920, 100889, 100859, 100819, 100784, 100749 };
 
 int predictFloor(float pressure) {
-    for (int i = 0; i < 4; i++) {
-        if (pressure >= floorMin[i] && pressure <= floorMax[i]) {
-            return i + 1;
-        }
+  for (int i = 0; i < 6; i++) {
+    if (pressure >= floorMin[i] && pressure <= floorMax[i]) {
+      return i + 2;  // floors 2–7
     }
-    return -1;
+  }
+  return -1; // unknown
 }
+
 
 void setup() {
     Serial.begin(115200);
