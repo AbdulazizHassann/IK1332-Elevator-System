@@ -1,11 +1,16 @@
 #include <Wire.h>
 #include <WiFi.h>
+#include <time.h>
 #include <ICM_20948.h>
 #include <SparkFun_BMP581_Arduino_Library.h>
 
-// ================== WIFI ==================
-const char* ssid     = "KTH_IOT";
-const char* password = "Escalator";
+// ================== WIFI + NTP ==================
+const char* ssid     = "YOUR_WIFI_NAME";
+const char* password = "YOUR_WIFI_PASSWORD";
+
+const char* ntpServer           = "pool.ntp.org";
+const long  gmtOffset_sec       = 3600;
+const int   daylightOffset_sec  = 3600;
 
 // ================== SENSORS ==================
 ICM_20948_I2C imu;
@@ -15,12 +20,12 @@ BMP581 bmp;
 #define SCL_PIN 1
 
 // ================== TIMING ==================
-const unsigned long SAMPLE_INTERVAL_MS = 1000;  
-const unsigned long SEND_INTERVAL_MS   = 5000;  
+const unsigned long SAMPLE_INTERVAL_MS = 1000;
+const unsigned long SEND_INTERVAL_MS   = 5000;
 unsigned long lastSampleTime = 0;
 unsigned long lastSendTime   = 0;
 
-// ================== MOVING AVERAGE (ACCEL Z) ==================
+// ================== MOVING AVERAGE (Z ONLY) ==================
 const int ACCEL_WINDOW = 5;
 float accelZBuffer[ACCEL_WINDOW];
 int accelIndex = 0;
@@ -66,7 +71,7 @@ float getMeanPressure() {
   return sum / count;
 }
 
-// ================== MOVEMENT DETECTION ==================
+// ================== MOVEMENT DETECTION (Z ONLY) ==================
 int detectMovement(float meanZ) {
   const float GRAVITY   = 9.81;
   const float THRESHOLD = 0.05;
@@ -102,22 +107,35 @@ bool isTempAnomaly(float temp) {
   return (T > tempGamma);
 }
 
+// ================== TIME HELPERS ==================
+String getCurrentTimeString() {
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) {
+    return "TIME_ERROR";
+  }
+  char buffer[30];
+  strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
+  return String(buffer);
+}
+
 // ================== FIREBASE HOOK ==================
 void sendToFirebase(
   int currentFloor,
   int movement,
   float meanPressure,
   float meanTemp,
-  float meanAccelZ,
+  float meanAccelZ,   // ⭐ ONLY Z SENT
   float meanGyroX,
   float meanGyroY,
   float meanGyroZ,
   float meanMagX,
   float meanMagY,
   float meanMagZ,
-  bool tempAnomaly
+  bool tempAnomaly,
+  String timestamp
 ) {
   Serial.println("=== Sending to Firebase (stub) ===");
+  Serial.print("  Timestamp: "); Serial.println(timestamp);
   Serial.print("  Floor: "); Serial.println(currentFloor);
   Serial.print("  Movement: "); Serial.println(movement);
   Serial.print("  meanPressure: "); Serial.println(meanPressure);
@@ -140,7 +158,9 @@ void setup() {
   }
   Serial.println("\nWiFi connected!");
 
-  Serial.println("Starting I2C on custom pins...");
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
+  Serial.println("Starting I2C...");
   Wire.begin(SDA_PIN, SCL_PIN);
 
   Serial.println("Initializing ICM-20948...");
@@ -148,21 +168,20 @@ void setup() {
     Serial.println("ERROR: ICM-20948 not detected!");
     while (1) delay(100);
   }
-  Serial.println("ICM-20948 initialized successfully!");
 
   Serial.println("Initializing BMP581...");
   if (bmp.beginI2C(0x47, Wire) != BMP5_OK) {
     Serial.println("ERROR: BMP581 not detected!");
     while (1) delay(100);
   }
-  Serial.println("BMP581 initialized successfully!");
 }
 
 // ================== LOOP ==================
 void loop() {
   unsigned long now = millis();
 
-  static float lastAccelZ = 0, lastGyroX = 0, lastGyroY = 0, lastGyroZ = 0;
+  static float lastAccelZ = 0;
+  static float lastGyroX = 0, lastGyroY = 0, lastGyroZ = 0;
   static float lastMagX = 0, lastMagY = 0, lastMagZ = 0;
   static float lastPressure = 0, lastTemp = 0;
 
@@ -172,18 +191,19 @@ void loop() {
     if (imu.dataReady()) {
       imu.getAGMT();
 
-      // ⭐ Convert raw accel to m/s²
+      // ⭐ ONLY Z IS PROCESSED
       const float SCALE = 9.81 / 16384.0;
-
       lastAccelZ = imu.accZ() * SCALE;
-      lastGyroX  = imu.gyrX();
-      lastGyroY  = imu.gyrY();
-      lastGyroZ  = imu.gyrZ();
-      lastMagX   = imu.magX();
-      lastMagY   = imu.magY();
-      lastMagZ   = imu.magZ();
 
       updateAccelBuffer(lastAccelZ);
+
+      // Gyro + Mag unchanged
+      lastGyroX = imu.gyrX();
+      lastGyroY = imu.gyrY();
+      lastGyroZ = imu.gyrZ();
+      lastMagX  = imu.magX();
+      lastMagY  = imu.magY();
+      lastMagZ  = imu.magZ();
     }
 
     bmp5_sensor_data data;
@@ -195,12 +215,12 @@ void loop() {
 
     Serial.println("===== RAW SENSOR DATA =====");
     Serial.print("AccelZ (m/s^2): "); Serial.println(lastAccelZ);
-    Serial.print("Gyro: ");   Serial.print(lastGyroX); Serial.print(", ");
-                               Serial.print(lastGyroY); Serial.print(", ");
-                               Serial.println(lastGyroZ);
-    Serial.print("Mag: ");    Serial.print(lastMagX);  Serial.print(", ");
-                               Serial.print(lastMagY);  Serial.print(", ");
-                               Serial.println(lastMagZ);
+    Serial.print("Gyro: "); Serial.print(lastGyroX); Serial.print(", ");
+                           Serial.print(lastGyroY); Serial.print(", ");
+                           Serial.println(lastGyroZ);
+    Serial.print("Mag: ");  Serial.print(lastMagX); Serial.print(", ");
+                           Serial.print(lastMagY); Serial.print(", ");
+                           Serial.println(lastMagZ);
     Serial.print("Pressure: "); Serial.println(lastPressure);
     Serial.print("Temp: ");     Serial.println(lastTemp);
   }
@@ -208,25 +228,20 @@ void loop() {
   if (now - lastSendTime >= SEND_INTERVAL_MS) {
     lastSendTime = now;
 
-    float meanAccelZ    = getMeanAccelZ();
+    float meanAccelZ    = getMeanAccelZ();   // ⭐ ONLY Z
     float meanPressure  = getMeanPressure();
     float meanTemp      = lastTemp;
-
-    float meanGyroX = lastGyroX;
-    float meanGyroY = lastGyroY;
-    float meanGyroZ = lastGyroZ;
-    float meanMagX  = lastMagX;
-    float meanMagY  = lastMagY;
-    float meanMagZ  = lastMagZ;
 
     int movement = detectMovement(meanAccelZ);
     int currentFloor = predictFloor(meanPressure);
     bool tempAnom = isTempAnomaly(meanTemp);
 
+    String timestamp = getCurrentTimeString();
+
     Serial.println("===== PROCESSED DATA =====");
-    Serial.print("meanAccelZ (m/s^2): "); Serial.println(meanAccelZ);
+    Serial.print("meanAccelZ: "); Serial.println(meanAccelZ);
     Serial.print("meanPressure: "); Serial.println(meanPressure);
-    Serial.print("meanTemp: ");     Serial.println(meanTemp);
+    Serial.print("meanTemp: "); Serial.println(meanTemp);
 
     Serial.print("Movement: ");
     if (movement == 0)      Serial.println("STOPPED");
@@ -245,14 +260,15 @@ void loop() {
       movement,
       meanPressure,
       meanTemp,
-      meanAccelZ,
-      meanGyroX,
-      meanGyroY,
-      meanGyroZ,
-      meanMagX,
-      meanMagY,
-      meanMagZ,
-      tempAnom
+      meanAccelZ,   // ⭐ ONLY Z SENT
+      lastGyroX,
+      lastGyroY,
+      lastGyroZ,
+      lastMagX,
+      lastMagY,
+      lastMagZ,
+      tempAnom,
+      timestamp
     );
   }
 }
