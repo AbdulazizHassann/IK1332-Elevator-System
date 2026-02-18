@@ -40,11 +40,17 @@ void loop() {
     if (imu.dataReady()) {
         imu.getAGMT();
 
+        // ⭐ Convert raw accel to m/s²
+        const float SCALE = 9.81 / 16384.0;
+        float ax = imu.accX() * SCALE;
+        float ay = imu.accY() * SCALE;
+        float az = imu.accZ() * SCALE;
+
         Serial.println("=== ICM-20948 ===");
         Serial.print("Accel (m/s^2): ");
-        Serial.print(imu.accX()); Serial.print(", ");
-        Serial.print(imu.accY()); Serial.print(", ");
-        Serial.println(imu.accZ());
+        Serial.print(ax); Serial.print(", ");
+        Serial.print(ay); Serial.print(", ");
+        Serial.println(az);
 
         Serial.print("Gyro (rad/s): ");
         Serial.print(imu.gyrX()); Serial.print(", ");
