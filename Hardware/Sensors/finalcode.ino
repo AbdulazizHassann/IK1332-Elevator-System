@@ -92,8 +92,8 @@ int predictFloor(float pressure) {
 }
 
 // ================== TEMPERATURE ANOMALY ==================
-float tempMu     = 22.0;
-float tempSigma2 = 0.25;
+float tempMu     = 24.9627;
+float tempSigma2 = 1.0739;
 float tempGamma  = 9.0;
 
 bool isTempAnomaly(float temp) {
