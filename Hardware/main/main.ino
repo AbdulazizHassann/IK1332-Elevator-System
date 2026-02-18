@@ -1,8 +1,6 @@
+#include "debug.h"
 #include "networking.h"
 #include "firebase.h"
-#include "debug.h"
-
-static bool wroteOnce = false;
 
 void setup()
 {
@@ -10,23 +8,28 @@ void setup()
   delay(200);
 
   if (!NET::begin(20000))
-  {
-    DBG_PRINTLN("Halting: WiFi failed.");
     return;
-  }
 
-  FB::begin();
+  FS::begin();
 }
 
 void loop()
 {
   NET::loop();
-  FB::loop();
+  FS::loop();
 
-  if (FB::ready() && !wroteOnce)
+  static bool didOnce = false;
+  if (FS::ready() && !didOnce)
   {
-    wroteOnce = true;
-    FB::setInt("/elevator/status/currentFloor", 2, "setCurrentFloor");
-    FB::setInt("/elevator/status/totalFloors", 4, "setTotalFloors");
+    didOnce = true;
+
+    FS::setElevatorStatus(2, -1);
+    FS::logTemperature(23.81f);
+    FS::logPressure(101.1f);
+    FS::logAcceleration(101.1f);
+    FS::logGyroscope(101.1f, 101.1f, 101.1f);
+    FS::logMagnetometer(101.1f);
+    FS::logTravelHistory(1, 2);
   }
 }
+
