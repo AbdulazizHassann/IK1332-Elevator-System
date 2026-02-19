@@ -1,4 +1,4 @@
-/* Global reset & sane defaults */
+/* Global reset */
 
 *,
 *::before,
@@ -28,8 +28,6 @@ body {
   color: #111;
 }
 
-/* Remove default button/link styling
-   (components should style themselves) */
 button {
   all: unset;
   box-sizing: border-box;

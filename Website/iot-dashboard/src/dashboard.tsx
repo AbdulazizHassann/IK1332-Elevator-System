@@ -1,47 +1,27 @@
 import "./App.css";
-import { useRealtimeValue } from "./hooks/useRealtimeValue";
-import type { ElevatorStatus } from "./types/elevator";
+import { useFirestoreDoc } from "./hooks/useFirestoreDoc";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { StatisticsAccordion } from "./components/statisticsAccordion";
 
+type ElevatorStatus = {
+  currentFloor: number;
+  floors: number;
+};
 
 export default function Dashboard() {
+  const {
+    data: statusData,
+    loading: statusLoading,
+    error: statusError,
+  } = useFirestoreDoc<ElevatorStatus>("elevator", "1");
 
   const navigate = useNavigate();
 
-  const [openSensor, setOpenSensor] = useState<string | null>(null);
-
-  const sensors = [
-  { key: "temperature", label: "Temperature" },
-  { key: "pressure", label: "Pressure" },
-  { key: "acceleration", label: "Acceleration" },
-  { key: "gyro", label: "Gyro" },
-  { key: "magnetometer", label: "Magnetometer" },
-  { key: "traffic", label: "Traffic" },
-];
-
-const unitMap: Record<string, string> = {
-  temperature: "°C",
-  pressure: "Pa",
-  acceleration: "m/s²",
-  gyro: "°/s",
-  magnetometer: "µT",
-  traffic: "",
-};
-
-
-
-  const {
-    data: status,
-    loading,
-    error,
-  } = useRealtimeValue<ElevatorStatus>("elevator/status");
-
-  if (loading) {
+  if (statusLoading) {
     return <div className="page">Loading…</div>;
   }
 
-  if (error || !status) {
+  if (statusError || !statusData) {
     return (
       <div className="page">
         <p>Error loading elevator status.</p>
@@ -49,9 +29,8 @@ const unitMap: Record<string, string> = {
     );
   }
 
-  const { currentFloor, totalFloors } = status;
-
-
+  const { currentFloor, floors } = statusData;
+  console.log("Elevator status:", statusData);
 
   return (
     <div className="page">
@@ -82,91 +61,42 @@ const unitMap: Record<string, string> = {
                 <b>Current floor:</b> {currentFloor}
               </p>
               <p>
-                <b>Number of floors:</b> {totalFloors}
+                <b>Number of floors:</b> {floors}
               </p>
             </div>
           </section>
-        
+          <StatisticsAccordion />
+        </div>
 
-        
-          <section className="card">
-            
-          <div className="cardTitle">Live Sensor Data</div>
-
-          {sensors.map((sensor) => (
-            <div key={sensor.key} className="accordion-item">
-
-              <div
-                className="accordion-header"
-                onClick={() =>
-                  setOpenSensor(openSensor === sensor.key ? null : sensor.key)
-                }
-              >
-                {openSensor === sensor.key ? "▼" : "▶"} {sensor.label}
-              </div>
-
-              {openSensor === sensor.key && (
-                <div className="accordion-content">
-                  <p>
-                    <b>Current value:</b>{" "}
-                    {status[sensor.key as keyof ElevatorStatus]}{" "}
-                    {unitMap[sensor.key]}
-                  </p>
-
-                  <div className = "accordion-header">
-                  <button
-                    className="history-button"
-                    onClick={() => navigate(`/statistics/${sensor.key}`)}
-                  >
-                    View Full History
-                  </button>
-                  </div>
-                </div>
-            )}
-
-          </div>
-        ))}
-      </section>
-      </div>
-
-     <section className="elevator">
-          {Array.from({ length: totalFloors }, (_, i) => totalFloors - i).map(
-            (floor) => (
-              <div
-                key={floor}
-                className={`elevator-floor ${
-                  floor === currentFloor ? "active" : ""
-                }`}
-              >
-                <p>Floor {floor}</p>
-              </div>
-            ),
-          )}
+        <section className="elevator">
+          {Array.from({ length: floors }, (_, i) => floors - i).map((floor) => (
+            <div
+              key={floor}
+              className={`elevator-floor ${
+                floor === currentFloor ? "active" : ""
+              }`}
+            >
+              <p>Floor {floor}</p>
+            </div>
+          ))}
         </section>
 
+        <section className="warning-section">
+          <div className="warning-header">Warning History</div>
 
-         
-         
-
-          <section className="warning-section">
-                <div className="warning-header">Warning History</div>
-
-                <select
-                        onChange={(e) => {
-                        if (e.target.value) {
-                            navigate(`/statistics/warning/${e.target.value}`);
-                        }
-                        }}
-                    >
-                        <option value="">Select Warning Block</option>
-                        <option value="block1">Block 1 - 12:30</option>
-                        <option value="block2">Block 2 - 14:15</option>
-                        <option value="block3">Block 3 - 18:40</option>
-                </select>
-         </section>
-
-
-
+          <select
+            onChange={(e) => {
+              if (e.target.value) {
+                navigate(`/statistics/warning/${e.target.value}`);
+              }
+            }}
+          >
+            <option value="">Select Warning Block</option>
+            <option value="block1">Block 1 - 12:30</option>
+            <option value="block2">Block 2 - 14:15</option>
+            <option value="block3">Block 3 - 18:40</option>
+          </select>
+        </section>
       </main>
     </div>
   );
