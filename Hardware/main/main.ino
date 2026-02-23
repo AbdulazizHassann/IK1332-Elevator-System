@@ -5,8 +5,6 @@
 #include <ICM_20948.h>
 #include <SparkFun_BMP581_Arduino_Library.h>
 
-
-
 // ================== SENSORS ==================
 ICM_20948_I2C imu;
 BMP581 bmp;
@@ -102,31 +100,16 @@ bool isTempAnomaly(float temp) {
   return (T > tempGamma);
 }
 
-// ================== FIREBASE HOOK (NO TIMESTAMP) ==================
-/*
-void sendToFirebase(
-  int currentFloor,
-  int movement,
-  float meanPressure,
-  float meanTemp,
-  float meanAccelZ,
-  float meanGyroX,
-  float meanGyroY,
-  float meanGyroZ,
-  float meanMagX,
-  float meanMagY,
-  float meanMagZ,
-  bool tempAnomaly
-) {
-  Serial.println("=== Sending to Firebase (stub) ===");
-  Serial.print("  Floor: "); Serial.println(currentFloor);
-  Serial.print("  Movement: "); Serial.println(movement);
-  Serial.print("  meanPressure: "); Serial.println(meanPressure);
-  Serial.print("  meanTemp: "); Serial.println(meanTemp);
-  Serial.print("  meanAccelZ: "); Serial.println(meanAccelZ);
-  Serial.print("  tempAnomaly: "); Serial.println(tempAnomaly ? "YES" : "NO");
-  Serial.println("-----------------------------");
-}*/
+// ================== ACCELERATION ANOMALY (RAW) ==================
+float accelMu_raw     = 1021.3689;   
+float accelSigma2_raw = 116.0725;    
+float accelGamma_raw  = 9.0;         
+
+bool isAccelAnomalyRaw(int16_t rawAz) {
+  float diff = rawAz - accelMu_raw;
+  float T = (diff * diff) / accelSigma2_raw;
+  return (T > accelGamma_raw);
+}
 
 // ================== SETUP ==================
 void setup() {
@@ -163,6 +146,7 @@ void loop() {
   unsigned long now = millis();
 
   static float lastAccelZ = 0;
+  static int16_t lastRawAz = 0;
   static float lastGyroX = 0, lastGyroY = 0, lastGyroZ = 0;
   static float lastMagX = 0, lastMagY = 0, lastMagZ = 0;
   static float lastPressure = 0, lastTemp = 0;
@@ -174,7 +158,9 @@ void loop() {
       imu.getAGMT();
 
       const float SCALE = 9.81 / 16384.0;
-      lastAccelZ = imu.accZ() * SCALE;
+
+      lastRawAz = imu.rawAccZ();
+      lastAccelZ = lastRawAz * SCALE;
 
       updateAccelBuffer(lastAccelZ);
 
@@ -195,6 +181,7 @@ void loop() {
 
     Serial.println("===== RAW SENSOR DATA =====");
     Serial.print("AccelZ (m/s^2): "); Serial.println(lastAccelZ);
+    Serial.print("Raw AccelZ: "); Serial.println(lastRawAz);
     Serial.print("Gyro: "); Serial.print(lastGyroX); Serial.print(", ");
                            Serial.print(lastGyroY); Serial.print(", ");
                            Serial.println(lastGyroZ);
@@ -214,7 +201,9 @@ void loop() {
 
     int movement = detectMovement(meanAccelZ);
     int currentFloor = predictFloor(meanPressure);
-    bool tempAnom = isTempAnomaly(meanTemp);
+
+    bool tempAnom  = isTempAnomaly(meanTemp);
+    bool accelAnom = isAccelAnomalyRaw(lastRawAz);
 
     Serial.println("===== PROCESSED DATA =====");
     Serial.print("meanAccelZ: "); Serial.println(meanAccelZ);
@@ -233,24 +222,18 @@ void loop() {
     Serial.print("Temp anomaly: ");
     Serial.println(tempAnom ? "YES" : "NO");
 
+    Serial.print("Raw AccelZ: "); Serial.println(lastRawAz);
+    Serial.print("Accel anomaly: ");
+    Serial.println(accelAnom ? "YES" : "NO");
+
     if (FS::ready())
     {
-      if (0)
-      {
-        Serial.println("------------ DEBUG: SENDING DATA TO FIREBASE --------");
-      }
-      else
-      {
         FS::setElevatorStatus(currentFloor, -1);
         FS::logTemperature(meanTemp);
         FS::logPressure(meanPressure);
-        FS::logAcceleration(meanAccelZ);
+        FS::logAcceleration(meanAccelZ);     //  converted m/s²
+        FS::logRawAcceleration(lastRawAz);   //  raw counts
         FS::logGyroscope(lastGyroX, lastGyroY, lastGyroZ);
-        //FS::logMagnetometer(101.1f);
-        //FS::logTravelHistory(1, 2);
-      }
-      
     }
   }
 }
-
