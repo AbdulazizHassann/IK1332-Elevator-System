@@ -5,7 +5,8 @@ import { StatisticsAccordion } from "./components/statisticsAccordion";
 
 type ElevatorStatus = {
   currentFloor: number;
-  floors: number;
+  maxFloor: number;
+  minFloor: number;
 };
 
 export default function Dashboard() {
@@ -29,7 +30,8 @@ export default function Dashboard() {
     );
   }
 
-  const { currentFloor, floors } = statusData;
+  let { currentFloor, maxFloor, minFloor } = statusData;
+  currentFloor += minFloor;
   console.log("Elevator status:", statusData);
 
   return (
@@ -56,20 +58,48 @@ export default function Dashboard() {
 
           <section className="card">
             <div className="cardTitle">Status</div>
-            <div className="cardBody">
+            <div className="cardBody status">
               <p>
-                <b>Current floor:</b> {currentFloor}
+                <span>
+                  Current floor: <b>{currentFloor}</b>
+                </span>
+                <span>
+                  Max floor: <b>{maxFloor}</b>
+                </span>
+                <span>
+                  Min floor: <b>{minFloor}</b>
+                </span>
               </p>
-              <p>
-                <b>Number of floors:</b> {floors}
-              </p>
+            </div>
+            <div className="cardBody warning">
+              <p className="green">No anomalies detected.</p>
+              <p className="red">Temperature anomaly detected.</p>
             </div>
           </section>
           <StatisticsAccordion />
+          <section className="warning-section">
+            <div className="warning-header">Warning History</div>
+
+            <select
+              onChange={(e) => {
+                if (e.target.value) {
+                  navigate(`/statistics/warning/${e.target.value}`);
+                }
+              }}
+            >
+              <option value="">Select Warning Block</option>
+              <option value="block1">Block 1 - 12:30</option>
+              <option value="block2">Block 2 - 14:15</option>
+              <option value="block3">Block 3 - 18:40</option>
+            </select>
+          </section>
         </div>
 
         <section className="elevator">
-          {Array.from({ length: floors }, (_, i) => floors - i).map((floor) => (
+          {Array.from(
+            { length: maxFloor - minFloor + 1 },
+            (_, i) => maxFloor - i,
+          ).map((floor) => (
             <div
               key={floor}
               className={`elevator-floor ${
@@ -79,23 +109,6 @@ export default function Dashboard() {
               <p>Floor {floor}</p>
             </div>
           ))}
-        </section>
-
-        <section className="warning-section">
-          <div className="warning-header">Warning History</div>
-
-          <select
-            onChange={(e) => {
-              if (e.target.value) {
-                navigate(`/statistics/warning/${e.target.value}`);
-              }
-            }}
-          >
-            <option value="">Select Warning Block</option>
-            <option value="block1">Block 1 - 12:30</option>
-            <option value="block2">Block 2 - 14:15</option>
-            <option value="block3">Block 3 - 18:40</option>
-          </select>
         </section>
       </main>
     </div>

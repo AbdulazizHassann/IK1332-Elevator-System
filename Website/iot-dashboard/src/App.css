@@ -99,7 +99,21 @@
   margin-bottom: 12px;
 }
 
-.cardBody {
+.cardBody.status {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.cardBody.status span {
+  margin-right: 1em;
+}
+
+.cardBody.warning p.green {
+  color: #2e7d32;
+}
+
+.cardBody.warning p.red {
+  color: #c62828;
 }
 
 .warning-section {
@@ -111,9 +125,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  
-  align-self: flex-start;  
-  
+
+  align-self: flex-start;
 }
 
 .warning-header {
@@ -128,7 +141,6 @@
   background-color: white;
   cursor: pointer;
 }
-
 
 .accordion-item {
   border-top: 1px solid #eee;
@@ -160,5 +172,3 @@
   flex: 1;
   border-radius: 4px;
 }
-
-
