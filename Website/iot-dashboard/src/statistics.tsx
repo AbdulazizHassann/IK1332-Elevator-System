@@ -10,6 +10,8 @@ import {
   Tooltip,
   CartesianGrid,
   ResponsiveContainer,
+  BarChart,
+  Bar,
 } from "recharts";
 
 import { useReadingsHistory } from "./hooks/useReadingsHistory";
@@ -45,7 +47,16 @@ const collectionMap: Record<string, string> = {
   magnetometer: "magnetometer",
   traffic: "traffic",
 };
-
+/*dummy traffic pattern data, we need to replace to real data*/
+const dummyTrafficData = [
+  { time: "10:00", floors: 2 },
+  { time: "10:05", floors: 3 },
+  { time: "10:10", floors: 7 },
+  { time: "10:15", floors: 5 },
+  { time: "10:20", floors: 4 },
+  { time: "10:25", floors: 6 },
+  { time: "10:30", floors: 3 },
+];
 type ReadingBase = { timestamp: Timestamp };
 
 type TemperatureReading = ReadingBase & { temperature: number };
@@ -172,6 +183,41 @@ export default function Statistics() {
 
             {!loading && !error && (
               <ResponsiveContainer width="100%" height={350}>
+                   {sensor === "traffic" ? (
+      <BarChart data={dummyTrafficData}>
+        <text
+          x="50%"
+          y="20"
+          textAnchor="middle"
+          style={{ fontSize: "16px", fontWeight: 600 }}
+        >
+          Traffic Pattern (Floors Over Time)
+        </text>
+
+        <CartesianGrid strokeDasharray="3 3" />
+
+        <XAxis
+          dataKey="time"
+          label={{
+            value: "Time",
+            position: "insideBottom",
+            offset: -5,
+          }}
+        />
+
+        <YAxis
+          label={{
+            value: "Floors",
+            angle: -90,
+            position: "insideLeft",
+          }}
+        />
+
+        <Tooltip />
+
+        <Bar dataKey="floors" fill="#4caf50" />
+      </BarChart>
+    ) : (
                 <LineChart data={data}>
                   <text
                     x="50%"
@@ -211,6 +257,7 @@ export default function Statistics() {
                     dot={{ r: 4 }}
                   />
                 </LineChart>
+    )}
               </ResponsiveContainer>
             )}
           </div>
