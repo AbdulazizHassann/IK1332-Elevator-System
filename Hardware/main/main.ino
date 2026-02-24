@@ -162,7 +162,7 @@ void loop() {
 
       const float SCALE = 9.81 / 16384.0;
 
-      lastRawAz = imu.rawAccZ();
+      lastRawAz = imu.accZ();
       lastAccelZ = lastRawAz * SCALE;
 
       updateAccelBuffer(lastAccelZ);
