@@ -152,6 +152,7 @@ void loop() {
   static int16_t lastRawAz = 0;
   static float lastGyroX = 0, lastGyroY = 0, lastGyroZ = 0;
   static float lastMagX = 0, lastMagY = 0, lastMagZ = 0;
+  static float lastMagMagnitude = 0;
   static float lastPressure = 0, lastTemp = 0;
 
   if (now - lastSampleTime >= SAMPLE_INTERVAL_MS) {
@@ -170,9 +171,17 @@ void loop() {
       lastGyroX = imu.gyrX();
       lastGyroY = imu.gyrY();
       lastGyroZ = imu.gyrZ();
+
       lastMagX  = imu.magX();
       lastMagY  = imu.magY();
       lastMagZ  = imu.magZ();
+
+      // ===== MAGNITUDE ADDED HERE =====
+      lastMagMagnitude = sqrt(
+        lastMagX * lastMagX +
+        lastMagY * lastMagY +
+        lastMagZ * lastMagZ
+      );
     }
 
     bmp5_sensor_data data;
@@ -191,6 +200,9 @@ void loop() {
     Serial.print("Mag: ");  Serial.print(lastMagX); Serial.print(", ");
                            Serial.print(lastMagY); Serial.print(", ");
                            Serial.println(lastMagZ);
+
+    Serial.print("Mag Magnitude: "); Serial.println(lastMagMagnitude);
+
     Serial.print("Pressure: "); Serial.println(lastPressure);
     Serial.print("Temp: ");     Serial.println(lastTemp);
   }
@@ -236,11 +248,14 @@ void loop() {
         FS::setElevatorStatus(currentFloor);
         lastFloor = currentFloor;
       }
-        FS::logTemperature(meanTemp);
-        FS::logPressure(meanPressure);
-        FS::logAcceleration(meanAccelZ);     //  converted m/s²
-        FS::logGyroscope(lastGyroX, lastGyroY, lastGyroZ);
-        //FS::logMagnetometer(magnetometer);
+
+      FS::logTemperature(meanTemp);
+      FS::logPressure(meanPressure);
+      FS::logAcceleration(meanAccelZ);
+      FS::logGyroscope(lastGyroX, lastGyroY, lastGyroZ);
+
+      // ===== SEND MAGNITUDE TO FIREBASE =====
+      FS::logMagnetometer(lastMagMagnitude);
     }
   }
 }
