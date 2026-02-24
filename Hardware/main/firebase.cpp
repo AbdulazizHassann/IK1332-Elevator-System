@@ -137,7 +137,7 @@ namespace FS
       Document<Values::Value> docHistory;
       String readingId = makeDocId();
       String documentPathHistory = "elevator/1/travelHistory/" + readingId;
-      Document<Values::Value> docHistory("floor", Values::Value(currentFloorValue));
+      docHistory.add("floor", Values::Value(currentFloorValue));
 
       String ts;
       if (getUtcTimestampRFC3339(ts))

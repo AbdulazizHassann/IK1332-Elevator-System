@@ -239,8 +239,8 @@ void loop() {
         FS::logTemperature(meanTemp);
         FS::logPressure(meanPressure);
         FS::logAcceleration(meanAccelZ);     //  converted m/s²
-        FS::logRawAcceleration(lastRawAz);   //  raw counts
         FS::logGyroscope(lastGyroX, lastGyroY, lastGyroZ);
+        //FS::logMagnetometer(magnetometer);
     }
   }
 }
