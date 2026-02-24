@@ -7,7 +7,7 @@ namespace FS
   void loop();
   bool ready();
 
-  void setElevatorStatus(int floors, int currentFloor);
+  void setElevatorStatus(int currentFloor);
   void logTemperature(float temperature);
   void logPressure(float pressure);
   void logAcceleration(float acceleration);

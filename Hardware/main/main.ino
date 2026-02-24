@@ -12,6 +12,9 @@ BMP581 bmp;
 #define SDA_PIN 2
 #define SCL_PIN 1
 
+// ================== FLOOR ==================
+int lastFloor = -1;
+
 // ================== TIMING ==================
 const unsigned long SAMPLE_INTERVAL_MS = 1000;
 const unsigned long SEND_INTERVAL_MS   = 5000;
@@ -228,7 +231,11 @@ void loop() {
 
     if (FS::ready())
     {
-        FS::setElevatorStatus(currentFloor, -1);
+      if (lastFloor != currentFloor)
+      {
+        FS::setElevatorStatus(currentFloor);
+        lastFloor = currentFloor;
+      }
         FS::logTemperature(meanTemp);
         FS::logPressure(meanPressure);
         FS::logAcceleration(meanAccelZ);     //  converted m/s²

@@ -54,11 +54,13 @@ namespace FS
       return;
     }
 
+    /*
     if (r.available())
       DBG_PRINTF("✅ %s | payload: %s\n", r.uid().c_str(), r.c_str());
 
     if (r.isDebug())
       DBG_PRINTF("🐛 %s | %s\n", r.uid().c_str(), r.debug().c_str());
+    */
   }
 
   static String makeDocId()
@@ -104,8 +106,7 @@ namespace FS
     return app.ready();
   }
 
-  // floors only update if larger then 0
-  void setElevatorStatus(int currentFloor, int floors)
+  void setElevatorStatus(int currentFloor)
   {
     if (!ready())
       return;
@@ -118,13 +119,6 @@ namespace FS
     Values::IntegerValue currentFloorValue(currentFloor);
     doc.add("currentFloor", Values::Value(currentFloorValue));
     updateMask = "currentFloor";
-
-    if (floors >= 0)
-    {
-      Values::IntegerValue floorsValue(floors);
-      doc.add("floors", Values::Value(floorsValue));
-      updateMask += ",floors";
-    }
 
     PatchDocumentOptions patchOptions(
       DocumentMask(updateMask.c_str()), // only update what we included
@@ -139,6 +133,26 @@ namespace FS
               doc,
               processData,
               "setElevatorStatus");
+
+      Document<Values::Value> docHistory;
+      String readingId = makeDocId();
+      String documentPathHistory = "elevator/1/travelHistory/" + readingId;
+      Document<Values::Value> docHistory("floor", Values::Value(currentFloorValue));
+
+      String ts;
+      if (getUtcTimestampRFC3339(ts))
+      {
+        Values::TimestampValue valueTimestamp(ts.c_str());
+        docHistory.add("timestamp", Values::Value(valueTimestamp));
+      }
+
+      Docs.createDocument(aClient,
+                          Firestore::Parent(FIREBASE_PROJECT_ID),
+                          documentPathHistory,
+                          DocumentMask(),
+                          doc,
+                          processData,
+                          "logTravelHistory");
   }
 
   void logTemperature(float temperature)
@@ -147,7 +161,7 @@ namespace FS
       return;
 
     String readingId = makeDocId();
-    String documentPath = "elevator/1/temperatures/" + readingId;
+    String documentPath = "elevator/1/temperature/" + readingId;
 
     Values::DoubleValue valueTemperature((double)temperature);
     Document<Values::Value> doc("temperature", Values::Value(valueTemperature));
@@ -157,10 +171,6 @@ namespace FS
     {
       Values::TimestampValue valueTimestamp(ts.c_str());
       doc.add("timestamp", Values::Value(valueTimestamp));
-    }
-    else
-    {
-      DBG_PRINTLN("NTP time not available; writing without timestamp.");
     }
 
     Docs.createDocument(aClient,
