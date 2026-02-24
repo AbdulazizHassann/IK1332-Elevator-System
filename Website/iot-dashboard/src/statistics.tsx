@@ -40,7 +40,7 @@ const labelMap: Record<string, string> = {
 };
 
 const collectionMap: Record<string, string> = {
-  temperature: "temperatures",
+  temperature: "temperature",
   pressure: "pressure",
   acceleration: "acceleration",
   gyroscope: "gyroscope",
@@ -183,81 +183,81 @@ export default function Statistics() {
 
             {!loading && !error && (
               <ResponsiveContainer width="100%" height={350}>
-                   {sensor === "traffic" ? (
-      <BarChart data={dummyTrafficData}>
-        <text
-          x="50%"
-          y="20"
-          textAnchor="middle"
-          style={{ fontSize: "16px", fontWeight: 600 }}
-        >
-          Traffic Pattern (Floors Over Time)
-        </text>
+                {sensor === "traffic" ? (
+                  <BarChart data={dummyTrafficData}>
+                    <text
+                      x="50%"
+                      y="20"
+                      textAnchor="middle"
+                      style={{ fontSize: "16px", fontWeight: 600 }}
+                    >
+                      Traffic Pattern (Floors Over Time)
+                    </text>
 
-        <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid strokeDasharray="3 3" />
 
-        <XAxis
-          dataKey="time"
-          label={{
-            value: "Time",
-            position: "insideBottom",
-            offset: -5,
-          }}
-        />
+                    <XAxis
+                      dataKey="time"
+                      label={{
+                        value: "Time",
+                        position: "insideBottom",
+                        offset: -5,
+                      }}
+                    />
 
-        <YAxis
-          label={{
-            value: "Floors",
-            angle: -90,
-            position: "insideLeft",
-          }}
-        />
+                    <YAxis
+                      label={{
+                        value: "Floors",
+                        angle: -90,
+                        position: "insideLeft",
+                      }}
+                    />
 
-        <Tooltip />
+                    <Tooltip />
 
-        <Bar dataKey="floors" fill="#4caf50" />
-      </BarChart>
-    ) : (
-                <LineChart data={data}>
-                  <text
-                    x="50%"
-                    y="20"
-                    textAnchor="middle"
-                    style={{ fontSize: "16px", fontWeight: 600 }}
-                  >
-                    {label} Over Time
-                  </text>
+                    <Bar dataKey="floors" fill="#4caf50" />
+                  </BarChart>
+                ) : (
+                  <LineChart data={data}>
+                    <text
+                      x="50%"
+                      y="20"
+                      textAnchor="middle"
+                      style={{ fontSize: "16px", fontWeight: 600 }}
+                    >
+                      {label} Over Time
+                    </text>
 
-                  <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid strokeDasharray="3 3" />
 
-                  <XAxis
-                    dataKey="time"
-                    label={{
-                      value: "Time",
-                      position: "insideBottom",
-                      offset: -5,
-                    }}
-                  />
+                    <XAxis
+                      dataKey="time"
+                      label={{
+                        value: "Time",
+                        position: "insideBottom",
+                        offset: -5,
+                      }}
+                    />
 
-                  <YAxis
-                    label={{
-                      value: `${label} (${unit})`,
-                      angle: -90,
-                      position: "insideLeft",
-                    }}
-                  />
+                    <YAxis
+                      label={{
+                        value: `${label} (${unit})`,
+                        angle: -90,
+                        position: "insideLeft",
+                      }}
+                    />
 
-                  <Tooltip formatter={(value) => `${value} ${unit}`} />
+                    <Tooltip formatter={(value) => `${value} ${unit}`} />
 
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#4caf50"
-                    strokeWidth={3}
-                    dot={{ r: 4 }}
-                  />
-                </LineChart>
-    )}
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#4caf50"
+                      strokeWidth={3}
+                      dot={{ r: 4 }}
+                    />
+                  </LineChart>
+                )}
               </ResponsiveContainer>
             )}
           </div>

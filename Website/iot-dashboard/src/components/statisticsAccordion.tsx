@@ -13,7 +13,7 @@ export function StatisticsAccordion() {
   const temperatures = useLatestReading<{
     temperature: number;
     timestamp: Timestamp;
-  }>("1", "temperatures");
+  }>("1", "temperature");
   const pressure = useLatestReading<{
     pressure: number;
     timestamp: Timestamp;
