@@ -1,18 +1,16 @@
 #pragma once
 #include <Arduino.h>
 
-namespace FS
-{
+namespace FS {
   bool begin();
   void loop();
   bool ready();
 
-  void setElevatorStatus(int currentFloor);
-  void logTemperature(float temperature);
-  void logPressure(float pressure);
-  void logAcceleration(float acceleration);
-  void logGyroscope(float gyroscopeX, float gyroscopeY, float gyroscopeZ);
-  void logMagnetometer(float magnetometer);
-  void logTravelHistory(int oldFloor, int newFloor);
+  void log(const char* collection, const char* field, double value);
+  void log3(const char* collection, double x, double y, double z);
 
+  void patchElevatorStatus(const bool* anomalyAcceleration,
+                           const bool* anomalyTemperature,
+                           const int*  currentFloor,
+                           const bool* isMoving);
 }

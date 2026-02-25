@@ -23,7 +23,7 @@ type Sensor =
   | "travel";
 
 type Reading = { timestamp: Timestamp } & Record<string, number>;
-type TravelReading = { timestamp: Timestamp; currentFloor: number };
+type TravelReading = { timestamp: Timestamp; floor: number };
 
 type ChartPoint =
   | { time: string; value: number }
@@ -86,7 +86,7 @@ export default function Statistics() {
         .reverse()
         .map((r) => ({
           time: fmtTime(r.timestamp),
-          floor: r.currentFloor,
+          floor: r.floor,
         }))
     : [];
 
@@ -140,7 +140,7 @@ export default function Statistics() {
                       }}
                     />
                     <YAxis
-                      domain={[2, 7]}
+                      domain={[1, 7]}
                       ticks={[2, 3, 4, 5, 6, 7]}
                       allowDecimals={false}
                       label={{

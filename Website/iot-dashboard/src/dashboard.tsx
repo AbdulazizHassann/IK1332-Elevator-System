@@ -1,6 +1,5 @@
 import "./App.css";
 import { useFirestoreDoc } from "./hooks/useFirestoreDoc";
-import { useNavigate } from "react-router-dom";
 import { StatisticsAccordion } from "./components/statisticsAccordion";
 
 type ElevatorStatus = {
@@ -18,8 +17,6 @@ export default function Dashboard() {
     loading: statusLoading,
     error: statusError,
   } = useFirestoreDoc<ElevatorStatus>("elevator", "1");
-
-  const navigate = useNavigate();
 
   if (statusLoading) {
     return <div className="page">Loading…</div>;

@@ -243,21 +243,15 @@ void loop() {
     Serial.print("Accel anomaly: ");
     Serial.println(accelAnom ? "YES" : "NO");
 
+    // ===== SEND DATA TO THE CLOUD =====
     if (FS::ready())
     {
-      if (lastFloor != currentFloor)
-      {
-        FS::setElevatorStatus(currentFloor);
-        lastFloor = currentFloor;
-      }
-
-      FS::logTemperature(meanTemp);
-      FS::logPressure(meanPressure);
-      FS::logAcceleration(meanAccelZ);   // still send m/s²
-      FS::logGyroscope(lastGyroX, lastGyroY, lastGyroZ);
-      FS::logMagnetometer(lastMagMagnitude);
-
-      //FS::logMovement(movement);         // NEW
+      FS::patchElevatorStatus(&accelAnom, &tempAnom, &currentFloor, &movement);
+      FS::log("temperature", "temperature", meanTemp);
+      FS::log("pressure", "pressure", meanPressure);
+      FS::log("acceleration","acceleration", meanAccelZ);
+      FS::log3("gyroscope", lastGyroX, lastGyroY, lastGyroZ);
+      FS::log("magnetometer", "magnetometer", lastMagMagnitude);
     }
   }
 }
