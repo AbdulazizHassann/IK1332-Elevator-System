@@ -13,7 +13,7 @@ BMP581 bmp;
 #define SCL_PIN 1
 
 // ================== FLOOR ==================
-int lastFloor = -1;
+int lastFloor = 0;
 
 // ================== TIMING ==================
 const unsigned long SAMPLE_INTERVAL_MS = 1000;
