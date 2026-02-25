@@ -13,7 +13,7 @@ BMP581 bmp;
 #define SCL_PIN 1
 
 // ================== FLOOR ==================
-int lastFloor = -1;
+int lastFloor = 0;
 
 // ================== TIMING ==================
 const unsigned long SAMPLE_INTERVAL_MS = 1000;
@@ -33,6 +33,10 @@ void updateAccelBuffer(float newZ) {
   if (accelIndex >= ACCEL_WINDOW) {
     accelIndex = 0;
     accelFilled = true;
+  }
+  else
+  {
+    accelFilled = false;
   }
 }
 
