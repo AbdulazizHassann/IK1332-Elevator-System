@@ -65,7 +65,7 @@ export function StatisticsAccordion() {
       unit: "µT",
       data: magnetometer.data?.magnetometer,
     },
-    { key: "Traffic", unit: "", data: null },
+    { key: "Travel", unit: "", data: null },
   ];
 
   return (

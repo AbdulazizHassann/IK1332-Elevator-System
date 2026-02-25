@@ -1,7 +1,5 @@
-import { useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Timestamp } from "firebase/firestore";
-
 import {
   LineChart,
   Line,
@@ -12,161 +10,93 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  Legend,
 } from "recharts";
-
 import { useReadingsHistory } from "./hooks/useReadingsHistory";
 
-type DataPoint = {
-  time: string;
-  value: number;
+type Sensor =
+  | "temperature"
+  | "pressure"
+  | "acceleration"
+  | "gyroscope"
+  | "magnetometer"
+  | "travel";
+
+type Reading = { timestamp: Timestamp } & Record<string, number>;
+type TravelReading = { timestamp: Timestamp; currentFloor: number };
+
+type ChartPoint =
+  | { time: string; value: number }
+  | { time: string; x: number; y: number; z: number };
+
+type TravelPoint = { time: string; floor: number };
+
+const SENSOR: Record<Sensor, { label: string; unit: string }> = {
+  temperature: { label: "Temperature", unit: "°C" },
+  pressure: { label: "Pressure", unit: "Pa" },
+  acceleration: { label: "Acceleration", unit: "m/s²" },
+  gyroscope: { label: "Gyroscope", unit: "°/s" },
+  magnetometer: { label: "Magnetometer", unit: "µT" },
+  travel: { label: "Travel", unit: "floor" },
 };
 
-const unitMap: Record<string, string> = {
-  temperature: "°C",
-  pressure: "Pa",
-  acceleration: "m/s²",
-  gyroscope: "°/s",
-  magnetometer: "µT",
-  traffic: "count",
-};
-
-const labelMap: Record<string, string> = {
-  temperature: "Temperature",
-  pressure: "Pressure",
-  acceleration: "Acceleration",
-  gyroscope: "Gyroscope",
-  magnetometer: "Magnetometer",
-  traffic: "Traffic",
-};
-
-const collectionMap: Record<string, string> = {
-  temperature: "temperature",
-  pressure: "pressure",
-  acceleration: "acceleration",
-  gyroscope: "gyroscope",
-  magnetometer: "magnetometer",
-  traffic: "traffic",
-};
-/*dummy traffic pattern data, we need to replace to real data*/
-const dummyTrafficData = [
-  { time: "10:00", floors: 2 },
-  { time: "10:05", floors: 3 },
-  { time: "10:10", floors: 7 },
-  { time: "10:15", floors: 5 },
-  { time: "10:20", floors: 4 },
-  { time: "10:25", floors: 6 },
-  { time: "10:30", floors: 3 },
-];
-type ReadingBase = { timestamp: Timestamp };
-
-type TemperatureReading = ReadingBase & { temperature: number };
-type PressureReading = ReadingBase & { pressure: number };
-type AccelerationReading = ReadingBase & { acceleration: number };
-type MagnetometerReading = ReadingBase & { magnetometer: number };
-type TrafficReading = ReadingBase & { traffic: number };
-type GyroReading = ReadingBase & { x: number; y: number; z: number };
+const fmtTime = (t?: Timestamp) =>
+  t?.toDate?.().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }) ?? "";
 
 export default function Statistics() {
-  const { sensor } = useParams();
+  const { sensor: sensorParam } = useParams();
   const navigate = useNavigate();
 
-  const unit = unitMap[sensor ?? ""] || "";
-  const label = labelMap[sensor ?? ""] || "Sensor";
-  const subcollection = collectionMap[sensor ?? ""] || "";
+  const sensor = (sensorParam ?? "") as Sensor;
+  const meta = SENSOR[sensor];
 
-  const result = (() => {
-    switch (sensor) {
-      case "temperature":
-        return useReadingsHistory<TemperatureReading>("1", subcollection, {
-          limit: 100,
-          orderField: "timestamp",
-        });
-      case "pressure":
-        return useReadingsHistory<PressureReading>("1", subcollection, {
-          limit: 100,
-          orderField: "timestamp",
-        });
-      case "acceleration":
-        return useReadingsHistory<AccelerationReading>("1", subcollection, {
-          limit: 100,
-          orderField: "timestamp",
-        });
-      case "magnetometer":
-        return useReadingsHistory<MagnetometerReading>("1", subcollection, {
-          limit: 100,
-          orderField: "timestamp",
-        });
-      case "traffic":
-        return useReadingsHistory<TrafficReading>("1", subcollection, {
-          limit: 100,
-          orderField: "timestamp",
-        });
-      case "gyroscope":
-        return useReadingsHistory<GyroReading>("1", subcollection, {
-          limit: 100,
-          orderField: "timestamp",
-        });
-      default:
-        console.error("Unknown sensor:", sensor);
-        return {
-          data: [],
-          loading: false,
-          error: new Error("Unknown sensor"),
-        } as const;
-    }
-  })();
+  const isTravel = sensor === "travel";
 
-  const { data: readings, loading, error } = result;
+  const subcollection = meta ? (isTravel ? "travelHistory" : sensor) : "";
 
-  const data: DataPoint[] = useMemo(() => {
-    if (!sensor) return [];
+  const {
+    data: readingsRaw = [],
+    loading,
+    error,
+  } = useReadingsHistory<Reading | TravelReading>("1", subcollection, {
+    limit: 100,
+    orderField: "timestamp",
+  });
 
-    // our query is "desc", so reverse to chronological order.
-    const ordered = [...readings].reverse();
-
-    return ordered.map((r: any) => {
-      const time = r.timestamp?.toDate
-        ? r.timestamp.toDate().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
+  const sensorData: ChartPoint[] =
+    !isTravel && meta
+      ? (readingsRaw as Reading[])
+          .slice()
+          .reverse() // query is desc -> show chronological
+          .map((r) => {
+            const time = fmtTime(r.timestamp);
+            return sensor === "gyroscope"
+              ? { time, x: r.x, y: r.y, z: r.z }
+              : { time, value: r[sensor] };
           })
-        : "";
+      : [];
 
-      let value = 0;
-
-      switch (sensor) {
-        case "temperature":
-          value = r.temperature;
-          break;
-        case "pressure":
-          value = r.pressure;
-          break;
-        case "acceleration":
-          value = r.acceleration;
-          break;
-        case "magnetometer":
-          value = r.magnetometer;
-          break;
-        case "traffic":
-          value = r.traffic;
-          break;
-        case "gyroscope":
-          // Single line needs one value, so we plot magnitude
-          // Change it to three graphs?
-          value = Math.sqrt(r.x * r.x + r.y * r.y + r.z * r.z);
-          break;
-      }
-
-      return { time, value };
-    });
-  }, [readings, sensor]);
+  const travelData: TravelPoint[] = isTravel
+    ? (readingsRaw as TravelReading[])
+        .slice()
+        .reverse()
+        .map((r) => ({
+          time: fmtTime(r.timestamp),
+          floor: r.currentFloor,
+        }))
+    : [];
 
   return (
     <div className="page">
       <header className="topbar">
         <div>
-          <div className="title">{sensor?.toUpperCase()} Statistics</div>
+          <div className="title">
+            {(sensorParam ?? "SENSOR").toUpperCase()} Statistics
+          </div>
           <div className="subtitle">Historical Data</div>
         </div>
         <div className="accordion-header">
@@ -174,28 +104,33 @@ export default function Statistics() {
         </div>
       </header>
 
-      <main style={{ padding: "40px" }}>
+      <main style={{ padding: 40 }}>
         <div className="card">
           <div className="cardTitle">Graph Preview</div>
           <div className="cardBody">
             {loading && <div>Loading…</div>}
             {error && <div>Error: {error.message}</div>}
+            {!meta && !loading && (
+              <div>Unknown sensor: {String(sensorParam)}</div>
+            )}
 
-            {!loading && !error && (
+            {!loading && !error && meta && (
               <ResponsiveContainer width="100%" height={350}>
-                {sensor === "traffic" ? (
-                  <BarChart data={dummyTrafficData}>
+                {isTravel ? (
+                  <BarChart data={travelData} barCategoryGap="0%" barGap={0}>
                     <text
                       x="50%"
                       y="20"
                       textAnchor="middle"
-                      style={{ fontSize: "16px", fontWeight: 600 }}
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 600,
+                      }}
                     >
-                      Traffic Pattern (Floors Over Time)
+                      Travel (Floor Over Time)
                     </text>
 
                     <CartesianGrid strokeDasharray="3 3" />
-
                     <XAxis
                       dataKey="time"
                       label={{
@@ -204,32 +139,31 @@ export default function Statistics() {
                         offset: -5,
                       }}
                     />
-
                     <YAxis
+                      domain={[2, 7]}
+                      ticks={[2, 3, 4, 5, 6, 7]}
+                      allowDecimals={false}
                       label={{
-                        value: "Floors",
+                        value: "Floor",
                         angle: -90,
                         position: "insideLeft",
                       }}
                     />
-
-                    <Tooltip />
-
-                    <Bar dataKey="floors" fill="#4caf50" />
+                    <Tooltip cursor={{ fill: "rgba(76, 175, 80, 0.15)" }} />
+                    <Bar dataKey="floor" fill="#4caf50" />
                   </BarChart>
                 ) : (
-                  <LineChart data={data}>
+                  <LineChart data={sensorData}>
                     <text
                       x="50%"
                       y="20"
                       textAnchor="middle"
-                      style={{ fontSize: "16px", fontWeight: 600 }}
+                      style={{ fontSize: 16, fontWeight: 600 }}
                     >
-                      {label} Over Time
+                      {meta.label} Over Time
                     </text>
 
                     <CartesianGrid strokeDasharray="3 3" />
-
                     <XAxis
                       dataKey="time"
                       label={{
@@ -238,24 +172,59 @@ export default function Statistics() {
                         offset: -5,
                       }}
                     />
-
                     <YAxis
                       label={{
-                        value: `${label} (${unit})`,
+                        value: `${meta.label} (${meta.unit})`,
                         angle: -90,
                         position: "insideLeft",
                       }}
                     />
 
-                    <Tooltip formatter={(value) => `${value} ${unit}`} />
-
-                    <Line
-                      type="monotone"
-                      dataKey="value"
-                      stroke="#4caf50"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
+                    <Tooltip
+                      formatter={(value: any, name: any) =>
+                        sensor === "gyroscope"
+                          ? [
+                              `${value} ${meta.unit}`,
+                              String(name).toUpperCase(),
+                            ]
+                          : `${value} ${meta.unit}`
+                      }
                     />
+
+                    {sensor === "gyroscope" && <Legend />}
+
+                    {sensor === "gyroscope" ? (
+                      <>
+                        <Line
+                          type="monotone"
+                          dataKey="x"
+                          strokeWidth={2}
+                          dot={false}
+                          stroke="#f44336"
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="y"
+                          strokeWidth={2}
+                          dot={false}
+                          stroke="#2196f3"
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="z"
+                          strokeWidth={2}
+                          dot={false}
+                          stroke="#4caf50"
+                        />
+                      </>
+                    ) : (
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                      />
+                    )}
                   </LineChart>
                 )}
               </ResponsiveContainer>

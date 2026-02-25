@@ -7,6 +7,9 @@ type ElevatorStatus = {
   currentFloor: number;
   maxFloor: number;
   minFloor: number;
+  anomalyAcceleration: boolean;
+  anomalyTemperature: boolean;
+  isMoving: boolean;
 };
 
 export default function Dashboard() {
@@ -30,7 +33,14 @@ export default function Dashboard() {
     );
   }
 
-  let { currentFloor, maxFloor, minFloor } = statusData;
+  let {
+    currentFloor,
+    maxFloor,
+    minFloor,
+    anomalyAcceleration,
+    anomalyTemperature,
+    isMoving,
+  } = statusData;
   console.log("Elevator status:", statusData);
 
   return (
@@ -63,6 +73,9 @@ export default function Dashboard() {
                   Current floor: <b>{currentFloor}</b>
                 </span>
                 <span>
+                  Moving: <b>{isMoving ? "Yes" : "No"}</b>
+                </span>
+                <span>
                   Max floor: <b>{maxFloor}</b>
                 </span>
                 <span>
@@ -71,28 +84,18 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="cardBody warning">
-              <p className="green">No anomalies detected.</p>
-              <p className="red">Temperature anomaly detected.</p>
-              <p className="red">Acceleration anomaly detected.</p>
+              {!anomalyTemperature && !anomalyAcceleration && (
+                <p className="green">No anomalies detected.</p>
+              )}
+              {anomalyTemperature && (
+                <p className="red">Temperature anomaly detected.</p>
+              )}
+              {anomalyAcceleration && (
+                <p className="red">Acceleration anomaly detected.</p>
+              )}
             </div>
           </section>
           <StatisticsAccordion />
-          <section className="warning-section">
-            <div className="warning-header">Warning History</div>
-
-            <select
-              onChange={(e) => {
-                if (e.target.value) {
-                  navigate(`/statistics/warning/${e.target.value}`);
-                }
-              }}
-            >
-              <option value="">Select Warning Block</option>
-              <option value="block1">Block 1 - 12:30</option>
-              <option value="block2">Block 2 - 14:15</option>
-              <option value="block3">Block 3 - 18:40</option>
-            </select>
-          </section>
         </div>
 
         <section className="elevator">
