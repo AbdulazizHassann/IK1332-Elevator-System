@@ -74,6 +74,7 @@ export default function Dashboard() {
             <div className="cardBody warning">
               <p className="green">No anomalies detected.</p>
               <p className="red">Temperature anomaly detected.</p>
+              <p className="red">Acceleration anomaly detected.</p>
             </div>
           </section>
           <StatisticsAccordion />
