@@ -13,7 +13,7 @@ BMP581 bmp;
 #define SCL_PIN 1
 
 // ================== FLOOR ==================
-int lastFloor = 0;
+int lastFloor = -1;
 
 // ================== TIMING ==================
 const unsigned long SAMPLE_INTERVAL_MS = 1000;
@@ -21,7 +21,7 @@ const unsigned long SEND_INTERVAL_MS   = 5000;
 unsigned long lastSampleTime = 0;
 unsigned long lastSendTime   = 0;
 
-// ================== MOVING AVERAGE (Z ONLY) ==================
+// ================== MOVING AVERAGE (CONVERTED Z) ==================
 const int ACCEL_WINDOW = 5;
 float accelZBuffer[ACCEL_WINDOW];
 int accelIndex = 0;
@@ -34,10 +34,6 @@ void updateAccelBuffer(float newZ) {
     accelIndex = 0;
     accelFilled = true;
   }
-  else
-  {
-    accelFilled = false;
-  }
 }
 
 float getMeanAccelZ() {
@@ -45,6 +41,29 @@ float getMeanAccelZ() {
   if (count == 0) return 0.0;
   float sum = 0;
   for (int i = 0; i < count; i++) sum += accelZBuffer[i];
+  return sum / count;
+}
+
+// ================== MOVING AVERAGE (RAW Z ONLY) ==================
+const int RAW_WINDOW = 5;
+int16_t rawZBuffer[RAW_WINDOW];
+int rawIndex = 0;
+bool rawFilled = false;
+
+void updateRawZBuffer(int16_t newRaw) {
+  rawZBuffer[rawIndex] = newRaw;
+  rawIndex++;
+  if (rawIndex >= RAW_WINDOW) {
+    rawIndex = 0;
+    rawFilled = true;
+  }
+}
+
+float getMeanRawZ() {
+  int count = rawFilled ? RAW_WINDOW : rawIndex;
+  if (count == 0) return 0.0;
+  float sum = 0;
+  for (int i = 0; i < count; i++) sum += rawZBuffer[i];
   return sum / count;
 }
 
@@ -69,18 +88,6 @@ float getMeanPressure() {
   float sum = 0;
   for (int i = 0; i < count; i++) sum += pressureBuffer[i];
   return sum / count;
-}
-
-// ================== MOVEMENT DETECTION (Z ONLY) ==================
-int detectMovement(float meanZ) {
-  const float GRAVITY   = 9.81;
-  const float THRESHOLD = 0.05;
-
-  float diff = meanZ - GRAVITY;
-
-  if (fabs(diff) < THRESHOLD) return 0;
-  else if (diff > THRESHOLD)  return 1;
-  else                        return -1;
 }
 
 // ================== FLOOR DETECTION ==================
@@ -108,9 +115,9 @@ bool isTempAnomaly(float temp) {
 }
 
 // ================== ACCELERATION ANOMALY (RAW) ==================
-float accelMu_raw     = 1021.3689;   
-float accelSigma2_raw = 116.0725;    
-float accelGamma_raw  = 9.0;         
+float accelMu_raw     = 1021.3689;
+float accelSigma2_raw = 116.0725;
+float accelGamma_raw  = 9.0;
 
 bool isAccelAnomalyRaw(int16_t rawAz) {
   float diff = rawAz - accelMu_raw;
@@ -171,6 +178,7 @@ void loop() {
       lastAccelZ = lastRawAz * SCALE;
 
       updateAccelBuffer(lastAccelZ);
+      updateRawZBuffer(lastRawAz);
 
       lastGyroX = imu.gyrX();
       lastGyroY = imu.gyrY();
@@ -180,7 +188,6 @@ void loop() {
       lastMagY  = imu.magY();
       lastMagZ  = imu.magZ();
 
-      // ===== MAGNITUDE ADDED HERE =====
       lastMagMagnitude = sqrt(
         lastMagX * lastMagX +
         lastMagY * lastMagY +
@@ -198,15 +205,6 @@ void loop() {
     Serial.println("===== RAW SENSOR DATA =====");
     Serial.print("AccelZ (m/s^2): "); Serial.println(lastAccelZ);
     Serial.print("Raw AccelZ: "); Serial.println(lastRawAz);
-    Serial.print("Gyro: "); Serial.print(lastGyroX); Serial.print(", ");
-                           Serial.print(lastGyroY); Serial.print(", ");
-                           Serial.println(lastGyroZ);
-    Serial.print("Mag: ");  Serial.print(lastMagX); Serial.print(", ");
-                           Serial.print(lastMagY); Serial.print(", ");
-                           Serial.println(lastMagZ);
-
-    Serial.print("Mag Magnitude: "); Serial.println(lastMagMagnitude);
-
     Serial.print("Pressure: "); Serial.println(lastPressure);
     Serial.print("Temp: ");     Serial.println(lastTemp);
   }
@@ -217,31 +215,31 @@ void loop() {
     float meanAccelZ    = getMeanAccelZ();
     float meanPressure  = getMeanPressure();
     float meanTemp      = lastTemp;
+    float meanRawZ      = getMeanRawZ();
 
-    int movement = detectMovement(meanAccelZ);
+    // ===== RAW RANGE MOVEMENT DETECTION =====
+    const float RAW_MIN = 1027.4;
+    const float RAW_MAX = 1043.6;
+
+    bool movement = (meanRawZ < RAW_MIN || meanRawZ > RAW_MAX);
+
     int currentFloor = predictFloor(meanPressure);
 
     bool tempAnom  = isTempAnomaly(meanTemp);
     bool accelAnom = isAccelAnomalyRaw(lastRawAz);
 
     Serial.println("===== PROCESSED DATA =====");
-    Serial.print("meanAccelZ: "); Serial.println(meanAccelZ);
-    Serial.print("meanPressure: "); Serial.println(meanPressure);
-    Serial.print("meanTemp: "); Serial.println(meanTemp);
-
-    Serial.print("Movement: ");
-    if (movement == 0)      Serial.println("STOPPED");
-    else if (movement == 1) Serial.println("UP");
-    else                    Serial.println("DOWN");
+    Serial.print("meanRawZ: "); Serial.println(meanRawZ);
+    Serial.print("Movement: "); Serial.println(movement ? "MOVING" : "IDLE");
 
     Serial.print("Current floor: ");
     if (currentFloor == -1) Serial.println("UNKNOWN");
+    else if (movement) Serial.println("MOVING");
     else                    Serial.println(currentFloor);
 
     Serial.print("Temp anomaly: ");
     Serial.println(tempAnom ? "YES" : "NO");
 
-    Serial.print("Raw AccelZ: "); Serial.println(lastRawAz);
     Serial.print("Accel anomaly: ");
     Serial.println(accelAnom ? "YES" : "NO");
 
@@ -255,11 +253,11 @@ void loop() {
 
       FS::logTemperature(meanTemp);
       FS::logPressure(meanPressure);
-      FS::logAcceleration(meanAccelZ);
+      FS::logAcceleration(meanAccelZ);   // still send m/s²
       FS::logGyroscope(lastGyroX, lastGyroY, lastGyroZ);
-
-      // ===== SEND MAGNITUDE TO FIREBASE =====
       FS::logMagnetometer(lastMagMagnitude);
+
+      FS::logMovement(movement);         // NEW
     }
   }
 }
