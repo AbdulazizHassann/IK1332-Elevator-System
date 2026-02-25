@@ -91,8 +91,8 @@ float getMeanPressure() {
 }
 
 // ================== FLOOR DETECTION ==================
-float floorMin[6] = {100890, 100860, 100820, 100785, 100750, 100710};
-float floorMax[6] = {100920, 100889, 100859, 100819, 100784, 100749};
+float floorMin[6] = {100000, 100860, 102060, 100785, 100750, 100710};
+float floorMax[6] = {100000, 100889, 102090, 100819, 100784, 100749};
 
 int predictFloor(float pressure) {
   for (int i = 0; i < 6; i++) {
@@ -234,7 +234,7 @@ void loop() {
 
     Serial.print("Current floor: ");
     if (currentFloor == -1) Serial.println("UNKNOWN");
-    else if (movement) Serial.println("MOVING");
+    else if (movement) Serial.println(lastFloor);
     else                    Serial.println(currentFloor);
 
     Serial.print("Temp anomaly: ");
@@ -257,7 +257,7 @@ void loop() {
       FS::logGyroscope(lastGyroX, lastGyroY, lastGyroZ);
       FS::logMagnetometer(lastMagMagnitude);
 
-      FS::logMovement(movement);         // NEW
+      //FS::logMovement(movement);         // NEW
     }
   }
 }

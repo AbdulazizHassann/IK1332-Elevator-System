@@ -31,7 +31,6 @@ export default function Dashboard() {
   }
 
   let { currentFloor, maxFloor, minFloor } = statusData;
-  currentFloor += minFloor;
   console.log("Elevator status:", statusData);
 
   return (
