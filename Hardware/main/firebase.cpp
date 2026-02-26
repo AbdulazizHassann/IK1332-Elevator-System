@@ -219,7 +219,7 @@ namespace FS {
     // ---- currentFloor ----
     if (currentFloor) {
       int v = *currentFloor;
-      if (!hasFloor || v != lastFloor) {
+      if (!hasFloor || v != lastFloor || true) {
         doc.add("currentFloor", Values::Value(Values::IntegerValue(v)));
         addMask("currentFloor");
         lastFloor = v;

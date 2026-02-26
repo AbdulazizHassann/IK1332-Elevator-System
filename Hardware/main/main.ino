@@ -1,4 +1,3 @@
-#include "debug.h"
 #include "networking.h"
 #include "firebase.h"
 #include <Wire.h>
@@ -13,7 +12,28 @@ BMP581 bmp;
 #define SCL_PIN 1
 
 // ================== FLOOR ==================
-int lastFloor = 0;
+int lastFloor = 0;   // DO NOT CHANGE — stays exactly as your original code
+
+// ================== ML FLOOR MODEL ==================
+float w_floor = -0.02636f;   // slope from MATLAB
+float b_floor = 1.9261f;     // intercept from MATLAB
+
+float Pbase = 100000.0f;          // dynamic baseline (pressure at floor 2)
+bool baselineSet = false;    // baseline initialized?
+
+int predictFloorML(float pressure) {
+  if (!baselineSet) return -1;  // cannot predict before baseline
+
+  float x = pressure - Pbase;
+  float floor_est = w_floor * x + b_floor;
+  int f = round(floor_est);
+
+  // clamp to valid floors 2–7
+  if (f < 2) f = 2;
+  if (f > 7) f = 7;
+
+  return f;
+}
 
 // ================== TIMING ==================
 const unsigned long SAMPLE_INTERVAL_MS = 1000;
@@ -90,23 +110,10 @@ float getMeanPressure() {
   return sum / count;
 }
 
-// ================== FLOOR DETECTION ==================
-float floorMin[6] = {100000, 100860, 102060, 100785, 100750, 100710};
-float floorMax[6] = {100000, 100889, 102090, 100819, 100784, 100749};
-
-int predictFloor(float pressure) {
-  for (int i = 0; i < 6; i++) {
-    if (pressure >= floorMin[i] && pressure <= floorMax[i]) {
-      return i + 2;
-    }
-  }
-  return -1;
-}
-
 // ================== TEMPERATURE ANOMALY ==================
 float tempMu     = 22.0;
 float tempSigma2 = 0.25;
-float tempGamma  = 9.0;
+float tempGamma  = 16.0;
 
 bool isTempAnomaly(float temp) {
   float diff = temp - tempMu;
@@ -117,7 +124,7 @@ bool isTempAnomaly(float temp) {
 // ================== ACCELERATION ANOMALY (RAW) ==================
 float accelMu_raw     = 1021.3689;
 float accelSigma2_raw = 116.0725;
-float accelGamma_raw  = 9.0;
+float accelGamma_raw  = 16.0;
 
 bool isAccelAnomalyRaw(int16_t rawAz) {
   float diff = rawAz - accelMu_raw;
@@ -218,12 +225,37 @@ void loop() {
     float meanRawZ      = getMeanRawZ();
 
     // ===== RAW RANGE MOVEMENT DETECTION =====
-    const float RAW_MIN = 1027.4;
-    const float RAW_MAX = 1043.6;
+    const float RAW_MIN = 1027.0;
+    const float RAW_MAX = 1040.0;
 
     bool movement = (meanRawZ < RAW_MIN || meanRawZ > RAW_MAX);
 
-    int currentFloor = predictFloor(meanPressure);
+    // ===== BASELINE AUTO-CALIBRATION (FLOOR 2) =====
+    if (!movement) {
+      if (!baselineSet) {
+        // First time idle: assume we're on floor 2
+        Pbase = meanPressure;
+        baselineSet = true;
+        Serial.print("Baseline initialized at floor 2: ");
+        Serial.println(Pbase);
+      } else {
+        // Only adjust baseline when predicted floor is 2
+        int predictedForBaseline = predictFloorML(meanPressure);
+        if (predictedForBaseline == 2) {
+          Pbase = 0.95f * Pbase + 0.05f * meanPressure;
+        }
+      }
+    }
+
+    // ===== ML FLOOR PREDICTION =====
+    int currentFloor = predictFloorML(meanPressure);
+
+    // ===== MOVEMENT FREEZE LOGIC (UNCHANGED) =====
+    if (movement) {
+      currentFloor = lastFloor;
+    } else if (currentFloor != -1) {
+      lastFloor = currentFloor;
+    }
 
     bool tempAnom  = isTempAnomaly(meanTemp);
     bool accelAnom = isAccelAnomalyRaw(lastRawAz);
@@ -233,9 +265,10 @@ void loop() {
     Serial.print("Movement: "); Serial.println(movement ? "MOVING" : "IDLE");
 
     Serial.print("Current floor: ");
-    if (currentFloor == -1) Serial.println("UNKNOWN");
-    else if (movement) Serial.println(lastFloor);
-    else                    Serial.println(currentFloor);
+    if (!baselineSet || currentFloor == -1) Serial.println("UNKNOWN");
+    else                                     Serial.println(currentFloor);
+
+    Serial.print("Pbase: "); Serial.println(Pbase);
 
     Serial.print("Temp anomaly: ");
     Serial.println(tempAnom ? "YES" : "NO");
