@@ -2,6 +2,7 @@ import "./App.css";
 import { useFirestoreDoc } from "./hooks/useFirestoreDoc";
 import { StatisticsAccordion } from "./components/statisticsAccordion";
 
+// Type definition for elevator data from Firestore
 type ElevatorStatus = {
   currentFloor: number;
   maxFloor: number;
@@ -12,16 +13,18 @@ type ElevatorStatus = {
 };
 
 export default function Dashboard() {
+  // Fetch elevator document ("elevator", id "1") from Firestore
   const {
     data: statusData,
     loading: statusLoading,
     error: statusError,
   } = useFirestoreDoc<ElevatorStatus>("elevator", "1");
 
+  // Show loading state while waiting for data
   if (statusLoading) {
     return <div className="page">Loading…</div>;
   }
-
+  // Show error message if something goes wrong
   if (statusError || !statusData) {
     return (
       <div className="page">
@@ -29,7 +32,7 @@ export default function Dashboard() {
       </div>
     );
   }
-
+   // Destructure elevator values from Firestore data
   let {
     currentFloor,
     maxFloor,
@@ -38,7 +41,8 @@ export default function Dashboard() {
     anomalyTemperature,
     isMoving,
   } = statusData;
-  console.log("Elevator status:", statusData);
+  // For debugg purposes.
+  console.log("Elevator status:", statusData); 
 
   return (
     <div className="page">

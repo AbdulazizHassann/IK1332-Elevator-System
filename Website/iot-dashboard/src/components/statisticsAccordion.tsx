@@ -2,32 +2,37 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useLatestReading } from "../hooks/useLatestReading";
 import { Timestamp } from "firebase/firestore";
-
+//---- Type definition for statistics to be displayed in the accordion ---//
 type Statistic = {
   key: string;
   unit: string;
   data: number | string | null | undefined;
 };
-
+//---- Component for displaying live sensor data in an accordion format ----//
 export function StatisticsAccordion() {
   const temperatures = useLatestReading<{
     temperature: number;
     timestamp: Timestamp;
   }>("1", "temperature");
+
   const pressure = useLatestReading<{
     pressure: number;
     timestamp: Timestamp;
   }>("1", "pressure");
+
   const acceleration = useLatestReading<{
     acceleration: number;
     timestamp: Timestamp;
   }>("1", "acceleration");
+
   const gyroscope = useLatestReading<{
     x: number;
     y: number;
     z: number;
     timestamp: Timestamp;
   }>("1", "gyroscope");
+
+  
   const magnetometer = useLatestReading<{
     magnetometer: number;
     timestamp: Timestamp;

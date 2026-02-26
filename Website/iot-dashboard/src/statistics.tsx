@@ -1,5 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { Timestamp } from "firebase/firestore";
+
+// Chart components from Recharts
 import {
   LineChart,
   Line,
@@ -14,6 +16,7 @@ import {
 } from "recharts";
 import { useReadingsHistory } from "./hooks/useReadingsHistory";
 
+//-----Sensor types-----//
 type Sensor =
   | "temperature"
   | "pressure"
@@ -21,7 +24,7 @@ type Sensor =
   | "gyroscope"
   | "magnetometer"
   | "travel";
-
+//---- Firestore reading and chart data format--------//
 type Reading = { timestamp: Timestamp } & Record<string, number>;
 type TravelReading = { timestamp: Timestamp; floor: number };
 
@@ -31,6 +34,7 @@ type ChartPoint =
 
 type TravelPoint = { time: string; floor: number };
 
+//---- Sensor metadata for labels and units ----//
 const SENSOR: Record<Sensor, { label: string; unit: string }> = {
   temperature: { label: "Temperature", unit: "°C" },
   pressure: { label: "Pressure", unit: "Pa" },
@@ -40,6 +44,7 @@ const SENSOR: Record<Sensor, { label: string; unit: string }> = {
   travel: { label: "Travel", unit: "floor" },
 };
 
+//---- Format Firestore timestamp to readable time ----//
 const fmtTime = (t?: Timestamp) =>
   t?.toDate?.().toLocaleTimeString([], {
     hour: "2-digit",
@@ -47,7 +52,9 @@ const fmtTime = (t?: Timestamp) =>
     second: "2-digit",
   }) ?? "";
 
+ //---- Main component for displaying sensor statistics ----//
 export default function Statistics() {
+  // Get sensor type from URL parameters and set up navigation
   const { sensor: sensorParam } = useParams();
   const navigate = useNavigate();
 
@@ -57,7 +64,7 @@ export default function Statistics() {
   const isTravel = sensor === "travel";
 
   const subcollection = meta ? (isTravel ? "travelHistory" : sensor) : "";
-
+  // Fetch historical readings for the selected sensor from Firestore//
   const {
     data: readingsRaw = [],
     loading,
@@ -66,12 +73,12 @@ export default function Statistics() {
     limit: 100,
     orderField: "timestamp",
   });
-
+  // Transform raw Firestore readings into chart-friendly data format//
   const sensorData: ChartPoint[] =
     !isTravel && meta
       ? (readingsRaw as Reading[])
           .slice()
-          .reverse() // query is desc -> show chronological
+          .reverse() 
           .map((r) => {
             const time = fmtTime(r.timestamp);
             return sensor === "gyroscope"
@@ -79,7 +86,7 @@ export default function Statistics() {
               : { time, value: r[sensor] };
           })
       : [];
-
+    // For travel sensor, prepare data for bar chart (floor over time)//
   const travelData: TravelPoint[] = isTravel
     ? (readingsRaw as TravelReading[])
         .slice()
@@ -89,7 +96,7 @@ export default function Statistics() {
           floor: r.floor,
         }))
     : [];
-
+        
   return (
     <div className="page">
       <header className="topbar">
