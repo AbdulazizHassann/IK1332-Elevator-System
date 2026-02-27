@@ -12,23 +12,22 @@ BMP581 bmp;
 #define SCL_PIN 1
 
 // ================== FLOOR ==================
-int lastFloor = 0;   // DO NOT CHANGE — stays exactly as your original code
+int lastFloor = 0;
 
 // ================== ML FLOOR MODEL ==================
-float w_floor = -0.02636f;   // slope from MATLAB
-float b_floor = 1.9261f;     // intercept from MATLAB
+float w_floor = -0.02636f;
+float b_floor = 1.9261f;
 
-float Pbase = 100000.0f;          // dynamic baseline (pressure at floor 2)
-bool baselineSet = false;    // baseline initialized?
+float Pbase = 100000.0f;
+bool baselineSet = false;
 
 int predictFloorML(float pressure) {
-  if (!baselineSet) return -1;  // cannot predict before baseline
+  if (!baselineSet) return -1;
 
   float x = pressure - Pbase;
   float floor_est = w_floor * x + b_floor;
   int f = round(floor_est);
 
-  // clamp to valid floors 2–7
   if (f < 2) f = 2;
   if (f > 7) f = 7;
 
@@ -41,7 +40,7 @@ const unsigned long SEND_INTERVAL_MS   = 3000;
 unsigned long lastSampleTime = 0;
 unsigned long lastSendTime   = 0;
 
-// ================== MOVING AVERAGE (CONVERTED Z) ==================
+// ================== MOVING AVERAGE (ACCEL Z) ==================
 const int ACCEL_WINDOW = 5;
 float accelZBuffer[ACCEL_WINDOW];
 int accelIndex = 0;
@@ -64,7 +63,7 @@ float getMeanAccelZ() {
   return sum / count;
 }
 
-// ================== MOVING AVERAGE (RAW Z ONLY) ==================
+// ================== MOVING AVERAGE (RAW Z) ==================
 const int RAW_WINDOW = 10;
 int16_t rawZBuffer[RAW_WINDOW];
 int rawIndex = 0;
@@ -121,9 +120,9 @@ bool isTempAnomaly(float temp) {
   return (T > tempGamma);
 }
 
-// ================== ACCELERATION ANOMALY (RAW) ==================
-float accelMu_raw = 1031.5935; 
-float accelSigma2_raw = 39.7448; 
+// ================== ACCELERATION ANOMALY ==================
+float accelMu_raw = 1031.5935;
+float accelSigma2_raw = 39.7448;
 float accelGamma_raw = 16.0;
 
 bool isAccelAnomalyRaw(int16_t rawAz) {
@@ -224,35 +223,18 @@ void loop() {
     float meanTemp      = lastTemp;
     float meanRawZ      = getMeanRawZ();
 
-    // ===== RAW RANGE MOVEMENT DETECTION =====
-    const float RAW_MIN = 1025.0;
-    const float RAW_MAX = 1038.0;
+    // ================== MOVEMENT DETECTION (PRESSURE ONLY) ==================
+    bool movement = fabs(meanPressure - lastPressure) > 10.0f;
+    lastPressure = meanPressure;
 
-    bool movement = (meanRawZ < RAW_MIN || meanRawZ > RAW_MAX);
-    // ===== MOVEMENT DETECTION (PRESSURE + RAW Z) =====
-
-    // Pressure‑based movement detection
-    // Idle pressure varies only ~7 Pa, so >10 Pa means movement
-    bool movementPressure = fabs(meanPressure - lastPressure) > 10.0f;
-
-    // Raw‑Z range detection (acceleration spikes)
-    const float RAW_MIN = 1025.0f;
-    const float RAW_MAX = 1038.0f;
-    bool movementAccel = (meanRawZ < RAW_MIN || meanRawZ > RAW_MAX);
-
-    // Final movement flag
-    bool movement = movementPressure || movementAccel;
-
-    // ===== BASELINE AUTO-CALIBRATION (FLOOR 2) =====
+    // ================== BASELINE AUTO-CALIBRATION ==================
     if (!movement) {
       if (!baselineSet) {
-        // First time idle: assume we're on floor 2
         Pbase = meanPressure;
         baselineSet = true;
         Serial.print("Baseline initialized at floor 2: ");
         Serial.println(Pbase);
       } else {
-        // Only adjust baseline when predicted floor is 2
         int predictedForBaseline = predictFloorML(meanPressure);
         if (predictedForBaseline == 2) {
           Pbase = 0.95f * Pbase + 0.05f * meanPressure;
@@ -260,10 +242,9 @@ void loop() {
       }
     }
 
-    // ===== ML FLOOR PREDICTION =====
+    // ================== ML FLOOR PREDICTION ==================
     int currentFloor = predictFloorML(meanPressure);
 
-    // ===== MOVEMENT FREEZE LOGIC (UNCHANGED) =====
     if (movement) {
       currentFloor = lastFloor;
     } else if (currentFloor != -1) {
@@ -289,7 +270,6 @@ void loop() {
     Serial.print("Accel anomaly: ");
     Serial.println(accelAnom ? "YES" : "NO");
 
-    // ===== SEND DATA TO THE CLOUD =====
     if (FS::ready())
     {
       FS::patchElevatorStatus(&accelAnom, &tempAnom, &currentFloor, &movement);
