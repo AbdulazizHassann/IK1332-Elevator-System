@@ -122,9 +122,9 @@ bool isTempAnomaly(float temp) {
 }
 
 // ================== ACCELERATION ANOMALY (RAW) ==================
-float accelMu_raw     = 1021.3689;
-float accelSigma2_raw = 116.0725;
-float accelGamma_raw  = 16.0;
+float accelMu_raw = 1031.5935; 
+float accelSigma2_raw = 39.7448; 
+float accelGamma_raw = 16.0;
 
 bool isAccelAnomalyRaw(int16_t rawAz) {
   float diff = rawAz - accelMu_raw;
