@@ -229,6 +229,19 @@ void loop() {
     const float RAW_MAX = 1038.0;
 
     bool movement = (meanRawZ < RAW_MIN || meanRawZ > RAW_MAX);
+    // ===== MOVEMENT DETECTION (PRESSURE + RAW Z) =====
+
+    // Pressure‑based movement detection
+    // Idle pressure varies only ~7 Pa, so >10 Pa means movement
+    bool movementPressure = fabs(meanPressure - lastPressure) > 10.0f;
+
+    // Raw‑Z range detection (acceleration spikes)
+    const float RAW_MIN = 1025.0f;
+    const float RAW_MAX = 1038.0f;
+    bool movementAccel = (meanRawZ < RAW_MIN || meanRawZ > RAW_MAX);
+
+    // Final movement flag
+    bool movement = movementPressure || movementAccel;
 
     // ===== BASELINE AUTO-CALIBRATION (FLOOR 2) =====
     if (!movement) {
