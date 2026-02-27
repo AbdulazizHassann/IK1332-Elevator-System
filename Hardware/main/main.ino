@@ -37,7 +37,7 @@ int predictFloorML(float pressure) {
 
 // ================== TIMING ==================
 const unsigned long SAMPLE_INTERVAL_MS = 1000;
-const unsigned long SEND_INTERVAL_MS   = 5000;
+const unsigned long SEND_INTERVAL_MS   = 3000;
 unsigned long lastSampleTime = 0;
 unsigned long lastSendTime   = 0;
 
@@ -65,7 +65,7 @@ float getMeanAccelZ() {
 }
 
 // ================== MOVING AVERAGE (RAW Z ONLY) ==================
-const int RAW_WINDOW = 5;
+const int RAW_WINDOW = 10;
 int16_t rawZBuffer[RAW_WINDOW];
 int rawIndex = 0;
 bool rawFilled = false;
@@ -225,8 +225,8 @@ void loop() {
     float meanRawZ      = getMeanRawZ();
 
     // ===== RAW RANGE MOVEMENT DETECTION =====
-    const float RAW_MIN = 1027.0;
-    const float RAW_MAX = 1040.0;
+    const float RAW_MIN = 1025.0;
+    const float RAW_MAX = 1038.0;
 
     bool movement = (meanRawZ < RAW_MIN || meanRawZ > RAW_MAX);
 
